@@ -128,6 +128,8 @@ function App() {
   }, []);
 
   const handleCSVExport = (rows, filename) => {
+    if (!rows?.length) return;
+
     const header = Object.keys(rows[0]).join(',');
     const body = rows.map((row) => Object.values(row).join(',')).join('\n');
     const blob = new Blob([`${header}\n${body}`], { type: 'text/csv;charset=utf-8;' });
