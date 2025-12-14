@@ -1,209 +1,342 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
-const transactions = [
-  { id: 1, date: '2024-09-01', description: 'Venta POS - Centro', category: 'Ventas', amount: 5200, type: 'ingreso', method: 'Tarjeta' },
-  { id: 2, date: '2024-09-02', description: 'Pago nómina semanal', category: 'Gastos fijos', amount: -1800, type: 'gasto', method: 'Transferencia' },
-  { id: 3, date: '2024-09-03', description: 'Compra inventario', category: 'Inventario', amount: -950, type: 'gasto', method: 'Crédito' },
-  { id: 4, date: '2024-09-04', description: 'Servicio catering evento', category: 'Ventas', amount: 3100, type: 'ingreso', method: 'Transferencia' },
-  { id: 5, date: '2024-09-04', description: 'Campaña Ads', category: 'Marketing', amount: -600, type: 'gasto', method: 'Tarjeta' },
-  { id: 6, date: '2024-09-05', description: 'Venta online', category: 'Ventas', amount: 870, type: 'ingreso', method: 'Pago en línea' },
+const products = [
+  {
+    id: 1,
+    model: 'Tenis Running AirFlex',
+    sku: 'RUN-001',
+    lot: 'L2409',
+    cost: 55,
+    salePrice: 92,
+    location: 'Almacén A1',
+    stock: 18,
+    barcode: '7501234567890',
+    receivedAt: '2024-09-02',
+    eta: '2024-09-08',
+  },
+  {
+    id: 2,
+    model: 'Mochila Modular 30L',
+    sku: 'BAG-014',
+    lot: 'L2408',
+    cost: 32,
+    salePrice: 65,
+    location: 'Almacén B3',
+    stock: 34,
+    barcode: '7504567891234',
+    receivedAt: '2024-08-28',
+    eta: '2024-09-05',
+  },
+  {
+    id: 3,
+    model: 'Lentes de sol urban',
+    sku: 'SUN-009',
+    lot: 'L2407',
+    cost: 18,
+    salePrice: 39,
+    location: 'Tienda piso 1',
+    stock: 22,
+    barcode: '7507891234567',
+    receivedAt: '2024-09-04',
+    eta: '2024-09-10',
+  },
 ];
 
-const budgets = [
-  { name: 'Inventario', used: 3400, limit: 5000 },
-  { name: 'Marketing', used: 1400, limit: 2500 },
-  { name: 'Nómina', used: 4200, limit: 4500 },
-  { name: 'Servicios', used: 720, limit: 1200 },
+const movements = [
+  {
+    id: 1,
+    type: 'entrada',
+    sku: 'RUN-001',
+    lot: 'L2409',
+    quantity: 12,
+    reason: 'Compra proveedor',
+    date: '2024-09-02',
+  },
+  {
+    id: 2,
+    type: 'salida',
+    sku: 'BAG-014',
+    lot: 'L2408',
+    quantity: 6,
+    reason: 'Venta ecommerce',
+    date: '2024-09-03',
+  },
+  {
+    id: 3,
+    type: 'ajuste',
+    sku: 'SUN-009',
+    lot: 'L2407',
+    quantity: -2,
+    reason: 'Rotura en almacén',
+    date: '2024-09-04',
+  },
 ];
 
-const goals = [
-  { name: 'Fondo de emergencia', progress: 68, target: '$10,000' },
-  { name: 'Apertura segundo local', progress: 42, target: '$25,000' },
-  { name: 'Actualizar equipo', progress: 84, target: '$6,500' },
+const finances = [
+  { id: 1, date: '2024-09-02', concept: 'Venta online', type: 'venta', amount: 1450, shipping: 120, commission: 58, tax: 232 },
+  { id: 2, date: '2024-09-02', concept: 'Pago envío paquetería', type: 'gasto', amount: -120, shipping: 120, commission: 0, tax: 0 },
+  { id: 3, date: '2024-09-03', concept: 'Venta POS', type: 'venta', amount: 980, shipping: 0, commission: 35, tax: 157 },
+  { id: 4, date: '2024-09-04', concept: 'Comisiones marketplace', type: 'gasto', amount: -95, shipping: 0, commission: 95, tax: 0 },
+  { id: 5, date: '2024-09-04', concept: 'Diezmo', type: 'gasto', amount: -150, shipping: 0, commission: 0, tax: 0 },
 ];
 
-function SummaryCard({ label, value, trend }) {
+const cashBalance = 18750;
+
+const formatCurrency = (value) =>
+  value.toLocaleString('es-MX', {
+    style: 'currency',
+    currency: 'MXN',
+    maximumFractionDigits: 0,
+  });
+
+function SummaryCard({ label, value, badge, description }) {
   return (
     <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 shadow-lg shadow-slate-950/40">
       <p className="text-sm text-slate-400">{label}</p>
       <p className="mt-2 text-3xl font-semibold text-white">{value}</p>
-      <p className="mt-3 inline-flex items-center gap-2 text-sm text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full">
-        <span className="h-2 w-2 rounded-full bg-emerald-400" />
-        {trend}
-      </p>
+      <div className="mt-3 flex items-center gap-2 text-xs text-slate-300">
+        <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-300 font-semibold">{badge}</span>
+        <span className="text-slate-400">{description}</span>
+      </div>
     </div>
   );
 }
 
-function ProgressBar({ percentage }) {
+function DataRow({ cells }) {
   return (
-    <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-      <div
-        className="h-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-500"
-        style={{ width: `${Math.min(percentage, 100)}%` }}
-      />
+    <div className="grid grid-cols-[1.5fr_repeat(5,_1fr)] items-center px-4 py-3 text-sm gap-3">
+      {cells.map((cell, idx) => (
+        <span key={idx} className="text-slate-200 truncate">
+          {cell}
+        </span>
+      ))}
     </div>
   );
 }
 
 function App() {
-  const { totalIncome, totalExpenses, netCashFlow, savingRate } = useMemo(() => {
-    const income = transactions.filter((t) => t.type === 'ingreso').reduce((sum, t) => sum + t.amount, 0);
-    const expense = Math.abs(transactions.filter((t) => t.type === 'gasto').reduce((sum, t) => sum + t.amount, 0));
-    const net = income - expense;
-    const rate = income === 0 ? 0 : Math.max(0, Math.round((net / income) * 100));
+  const [barcode, setBarcode] = useState('');
 
-    return {
-      totalIncome: income,
-      totalExpenses: expense,
-      netCashFlow: net,
-      savingRate: rate,
-    };
+  const totals = useMemo(() => {
+    const inventoryValue = products.reduce((sum, item) => sum + item.stock * item.cost, 0);
+    const potentialRevenue = products.reduce((sum, item) => sum + item.stock * item.salePrice, 0);
+    const totalSales = finances.filter((f) => f.type === 'venta').reduce((sum, f) => sum + f.amount, 0);
+    const totalExpenses = Math.abs(finances.filter((f) => f.type === 'gasto').reduce((sum, f) => sum + f.amount, 0));
+    const netCash = totalSales - totalExpenses;
+
+    return { inventoryValue, potentialRevenue, totalSales, totalExpenses, netCash };
   }, []);
 
-  const monthlyPerformance = [
-    { label: 'Ago', income: 9800, expenses: 7200 },
-    { label: 'Sep', income: 11200, expenses: 8100 },
-    { label: 'Oct (proy.)', income: 12400, expenses: 8400 },
-  ];
+  const handleCSVExport = (rows, filename) => {
+    if (!rows?.length) return;
+
+    const header = Object.keys(rows[0]).join(',');
+    const body = rows.map((row) => Object.values(row).join(',')).join('\n');
+    const blob = new Blob([`${header}\n${body}`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleBackup = () => {
+    const payload = { products, movements, finances, cashBalance };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'backup-finanzas.json';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <header className="bg-gradient-to-r from-emerald-500/20 via-cyan-500/10 to-blue-500/10 border-b border-slate-900">
-        <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+        <div className="max-w-7xl mx-auto px-6 py-8 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-sm uppercase tracking-[0.2em] text-emerald-300">Panel financiero</p>
-            <h1 className="mt-2 text-3xl md:text-4xl font-semibold text-white">Salud de tu negocio</h1>
-            <p className="mt-2 text-slate-300 max-w-2xl">
-              Vigila flujo de efectivo, controla presupuestos y sigue metas de crecimiento con este panel listo para usar.
+            <p className="text-sm uppercase tracking-[0.2em] text-emerald-300">MVP control financiero + inventario</p>
+            <h1 className="mt-2 text-3xl md:text-4xl font-semibold text-white">Panel operativo del negocio</h1>
+            <p className="mt-2 text-slate-300 max-w-3xl">
+              Registra productos con fecha de ingreso y entrega esperada, controla movimientos (compra, venta, ajustes),
+              registra ventas y gastos clave y monitorea saldo, inventario valuado y flujo de caja desde un solo lugar.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
             <button className="px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-semibold shadow-lg shadow-emerald-500/30 hover:scale-[1.01] transition">
-              Registrar ingreso
+              Agregar producto
             </button>
             <button className="px-4 py-2 rounded-xl bg-slate-900/80 border border-slate-800 hover:bg-slate-800 font-semibold text-slate-100">
-              Nuevo gasto
+              Registrar movimiento
             </button>
-            <button className="px-4 py-2 rounded-xl bg-slate-900/80 border border-slate-800 hover:bg-slate-800 font-semibold text-slate-100">
-              Exportar reporte
+            <button
+              className="px-4 py-2 rounded-xl bg-slate-900/80 border border-slate-800 hover:bg-slate-800 font-semibold text-slate-100"
+              onClick={() => handleCSVExport(products, 'inventario.csv')}
+            >
+              Exportar inventario CSV
             </button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-10 space-y-10">
+      <main className="max-w-7xl mx-auto px-6 py-10 space-y-10">
         <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-          <SummaryCard label="Ingresos del mes" value={`$ ${totalIncome.toLocaleString('es-MX')}`} trend="+12% vs. mes anterior" />
-          <SummaryCard label="Gastos del mes" value={`$ ${totalExpenses.toLocaleString('es-MX')}`} trend="-4% vs. mes anterior" />
-          <SummaryCard label="Flujo neto" value={`$ ${netCashFlow.toLocaleString('es-MX')}`} trend="Liquidez estable" />
-          <SummaryCard label="Tasa de ahorro" value={`${savingRate}%`} trend="Objetivo: 25%" />
-        </section>
-
-        <section className="grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2 bg-slate-900/70 border border-slate-800 rounded-2xl p-6 shadow-lg shadow-slate-950/40">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-xl font-semibold text-white">Resumen semanal</h2>
-                <p className="text-sm text-slate-400">Flujo de efectivo de los últimos movimientos registrados.</p>
-              </div>
-              <span className="px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 text-xs font-semibold">Actualizado</span>
-            </div>
-
-            <div className="mt-6 space-y-3">
-              {monthlyPerformance.map((item) => {
-                const net = item.income - item.expenses;
-                const margin = Math.round((net / item.income) * 100);
-                return (
-                  <div key={item.label} className="p-4 border border-slate-800 rounded-xl bg-slate-900/70">
-                    <div className="flex items-center justify-between">
-                      <div className="font-semibold text-white">{item.label}</div>
-                      <div className="text-sm text-slate-400">Margen {margin}%</div>
-                    </div>
-                    <div className="mt-3 grid grid-cols-3 gap-4 text-sm">
-                      <div>
-                        <p className="text-slate-400">Ingresos</p>
-                        <p className="text-white font-semibold">$ {item.income.toLocaleString('es-MX')}</p>
-                      </div>
-                      <div>
-                        <p className="text-slate-400">Gastos</p>
-                        <p className="text-white font-semibold">$ {item.expenses.toLocaleString('es-MX')}</p>
-                      </div>
-                      <div>
-                        <p className="text-slate-400">Flujo neto</p>
-                        <p className="text-white font-semibold">$ {net.toLocaleString('es-MX')}</p>
-                      </div>
-                    </div>
-                    <div className="mt-4 space-y-2">
-                      <div className="flex items-center justify-between text-xs text-slate-400">
-                        <span>Ingresos vs Gastos</span>
-                        <span>{Math.round((item.expenses / item.income) * 100)}% consumido</span>
-                      </div>
-                      <ProgressBar percentage={(item.expenses / item.income) * 100} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 shadow-lg shadow-slate-950/40 flex flex-col gap-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-white">Presupuestos</h2>
-              <button className="text-sm text-emerald-300 hover:text-emerald-200">Ajustar</button>
-            </div>
-            <div className="space-y-4">
-              {budgets.map((budget) => {
-                const percentage = Math.round((budget.used / budget.limit) * 100);
-                return (
-                  <div key={budget.name} className="p-4 rounded-xl border border-slate-800 bg-slate-900/60">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-white font-semibold">{budget.name}</p>
-                        <p className="text-slate-400 text-sm">$ {budget.used.toLocaleString('es-MX')} de $ {budget.limit.toLocaleString('es-MX')}</p>
-                      </div>
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${percentage > 90 ? 'bg-amber-500/20 text-amber-200' : 'bg-emerald-500/15 text-emerald-200'}`}>
-                        {percentage}%
-                      </span>
-                    </div>
-                    <div className="mt-3">
-                      <ProgressBar percentage={percentage} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <SummaryCard
+            label="Saldo disponible"
+            value={formatCurrency(cashBalance)}
+            badge="Caja + bancos"
+            description="Incluye últimas ventas y retiros"
+          />
+          <SummaryCard
+            label="Inventario valuado"
+            value={formatCurrency(totals.inventoryValue)}
+            badge="Costo acumulado"
+            description="Sumatoria stock x costo"
+          />
+          <SummaryCard
+            label="Flujo neto del mes"
+            value={formatCurrency(totals.netCash)}
+            badge="Ingresos - gastos"
+            description="Ventas menos envíos, comisiones, impuestos y diezmo"
+          />
+          <SummaryCard
+            label="Ventas potenciales"
+            value={formatCurrency(totals.potentialRevenue)}
+            badge="Precio de lista"
+            description="Proyección si vendes todo el stock"
+          />
         </section>
 
         <section className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 bg-slate-900/70 border border-slate-800 rounded-2xl p-6 shadow-lg shadow-slate-950/40">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-semibold text-white">Transacciones recientes</h2>
-                <p className="text-sm text-slate-400">Controla entradas y salidas por método de pago y categoría.</p>
+                <h2 className="text-xl font-semibold text-white">Registrar producto</h2>
+                <p className="text-sm text-slate-400">Modelo, SKU, lote, costo, precio, ubicación y fechas clave.</p>
               </div>
-              <button className="text-sm text-emerald-300 hover:text-emerald-200">Ver todo</button>
+              <span className="px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 text-xs font-semibold">Nuevo</span>
+            </div>
+            <form className="mt-6 grid gap-4 md:grid-cols-2" onSubmit={(e) => e.preventDefault()}>
+              <div className="space-y-2">
+                <label className="text-sm text-slate-300">Modelo / descripción</label>
+                <input className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" placeholder="Ej. Tenis AirFlex" required />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm text-slate-300">SKU</label>
+                <input className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" placeholder="RUN-001" required />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm text-slate-300">Lote</label>
+                <input className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" placeholder="L2409" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm text-slate-300">Costo unitario</label>
+                <input type="number" className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" placeholder="50" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm text-slate-300">Precio de venta</label>
+                <input type="number" className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" placeholder="80" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm text-slate-300">Ubicación</label>
+                <input className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" placeholder="Almacén A1" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm text-slate-300">Fecha de ingreso</label>
+                <input type="date" className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm text-slate-300">Fecha esperada de entrega</label>
+                <input type="date" className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm text-slate-300">Código de barras</label>
+                <input
+                  className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
+                  placeholder="Escanea o escribe"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm text-slate-300">Stock inicial</label>
+                <input type="number" className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" placeholder="10" />
+              </div>
+              <div className="md:col-span-2 flex justify-end">
+                <button className="px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-semibold shadow-lg shadow-emerald-500/30 hover:scale-[1.01] transition">
+                  Guardar producto
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 shadow-lg shadow-slate-950/40">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-white">Escaneo rápido</h2>
+              <button className="text-sm text-emerald-300 hover:text-emerald-200">Usar lector</button>
+            </div>
+            <p className="text-sm text-slate-400 mt-1">Busca por código de barras para sumar o restar stock.</p>
+            <div className="mt-4 space-y-3">
+              <input
+                value={barcode}
+                onChange={(e) => setBarcode(e.target.value)}
+                className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
+                placeholder="Escanea o escribe el código"
+              />
+              <button className="w-full py-2 rounded-xl bg-slate-800 text-white font-semibold hover:bg-slate-700 transition">Agregar rápido</button>
+              <div className="p-4 rounded-xl border border-slate-800 bg-slate-900/60 space-y-2 text-sm">
+                <div className="flex items-center justify-between text-slate-400">
+                  <span>Coincidencias</span>
+                  <span className="text-xs px-2 py-1 bg-slate-800 rounded-full">{barcode ? '1' : '0'}</span>
+                </div>
+                {barcode ? (
+                  <div className="text-slate-200">
+                    {products[0].model} — {products[0].sku}
+                  </div>
+                ) : (
+                  <div className="text-slate-500">Escanea un código para mostrar resultados.</div>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2 bg-slate-900/70 border border-slate-800 rounded-2xl p-6 shadow-lg shadow-slate-950/40">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-white">Inventario</h2>
+                <p className="text-sm text-slate-400">Stock, costo, precio, ubicación y fechas de ingreso/entrega.</p>
+              </div>
+              <button
+                className="text-sm text-emerald-300 hover:text-emerald-200"
+                onClick={() => handleCSVExport(products, 'inventario.csv')}
+              >
+                Exportar CSV
+              </button>
             </div>
             <div className="mt-4 border border-slate-800 rounded-xl overflow-hidden">
-              <div className="grid grid-cols-5 bg-slate-900 text-xs uppercase tracking-wide text-slate-400 px-4 py-3">
-                <span>Fecha</span>
-                <span>Descripción</span>
-                <span>Categoría</span>
-                <span>Método</span>
-                <span className="text-right">Monto</span>
+              <div className="grid grid-cols-[1.5fr_repeat(5,_1fr)] bg-slate-900 text-xs uppercase tracking-wide text-slate-400 px-4 py-3 gap-3">
+                <span>Producto</span>
+                <span>SKU</span>
+                <span>Lote</span>
+                <span>Stock</span>
+                <span>Ingreso</span>
+                <span>Entrega</span>
               </div>
               <div className="divide-y divide-slate-800 bg-slate-900/50">
-                {transactions.map((tx) => (
-                  <div key={tx.id} className="grid grid-cols-5 items-center px-4 py-3 text-sm">
-                    <span className="text-slate-300">{tx.date}</span>
-                    <span className="text-white font-medium">{tx.description}</span>
-                    <span className="text-slate-400">{tx.category}</span>
-                    <span className="text-slate-400">{tx.method}</span>
-                    <span className={`text-right font-semibold ${tx.type === 'ingreso' ? 'text-emerald-300' : 'text-rose-300'}`}>
-                      {tx.type === 'ingreso' ? '+ ' : '- '} $ {Math.abs(tx.amount).toLocaleString('es-MX')}
-                    </span>
-                  </div>
+                {products.map((item) => (
+                  <DataRow
+                    key={item.id}
+                    cells={[
+                      item.model,
+                      item.sku,
+                      item.lot,
+                      `${item.stock} uds. — ${formatCurrency(item.cost)}`,
+                      item.receivedAt,
+                      item.eta,
+                    ]}
+                  />
                 ))}
               </div>
             </div>
@@ -212,46 +345,138 @@ function App() {
           <div className="space-y-6">
             <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 shadow-lg shadow-slate-950/40">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-white">Metas</h2>
-                <button className="text-sm text-emerald-300 hover:text-emerald-200">Editar</button>
+                <h2 className="text-xl font-semibold text-white">Movimiento de inventario</h2>
+                <button className="text-sm text-emerald-300 hover:text-emerald-200">Plantilla</button>
               </div>
-              <div className="mt-4 space-y-4">
-                {goals.map((goal) => (
-                  <div key={goal.name} className="p-4 rounded-xl border border-slate-800 bg-slate-900/60">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-white font-semibold">{goal.name}</p>
-                        <p className="text-slate-400 text-sm">Meta: {goal.target}</p>
-                      </div>
-                      <span className="text-sm text-emerald-200 font-semibold">{goal.progress}%</span>
-                    </div>
-                    <div className="mt-3">
-                      <ProgressBar percentage={goal.progress} />
-                    </div>
+              <form className="mt-4 space-y-3" onSubmit={(e) => e.preventDefault()}>
+                <div className="grid grid-cols-2 gap-3">
+                  <select className="rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm">
+                    <option>Entrada</option>
+                    <option>Salida</option>
+                    <option>Ajuste</option>
+                  </select>
+                  <input className="rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" placeholder="SKU o código" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <input type="number" className="rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" placeholder="Cantidad" />
+                  <input className="rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" placeholder="Lote" />
+                </div>
+                <input className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" placeholder="Motivo (compra, venta, ajuste)" />
+                <div className="flex justify-end">
+                  <button className="px-4 py-2 rounded-xl bg-white text-slate-900 font-semibold hover:bg-slate-100 transition">Guardar movimiento</button>
+                </div>
+              </form>
+              <div className="mt-4 text-xs text-slate-400">Entradas, salidas y ajustes se reflejan en el valuado de inventario.</div>
+            </div>
+
+            <div className="bg-gradient-to-br from-emerald-500/20 via-emerald-500/10 to-cyan-500/10 border border-emerald-500/30 rounded-2xl p-6 shadow-lg shadow-emerald-900/40">
+              <h2 className="text-xl font-semibold text-white">Backup / Restore</h2>
+              <p className="text-sm text-emerald-100 mt-1">Guarda un archivo local o sube desde Google Drive / iCloud.</p>
+              <div className="mt-4 space-y-3">
+                <button
+                  className="w-full py-2 rounded-xl bg-white text-slate-900 font-semibold hover:bg-slate-100 transition"
+                  onClick={handleBackup}
+                >
+                  Descargar backup
+                </button>
+                <label className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border border-emerald-200/60 text-emerald-50 cursor-pointer hover:bg-emerald-500/10">
+                  <input type="file" className="hidden" />
+                  Restaurar desde archivo
+                </label>
+                <button className="w-full py-2 rounded-xl bg-slate-900/80 border border-emerald-500/40 text-emerald-50 hover:bg-slate-900">
+                  Conectar Google Drive / iCloud
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2 bg-slate-900/70 border border-slate-800 rounded-2xl p-6 shadow-lg shadow-slate-950/40">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-white">Movimientos recientes</h2>
+                <p className="text-sm text-slate-400">Entradas, salidas y ajustes por SKU y lote.</p>
+              </div>
+              <button
+                className="text-sm text-emerald-300 hover:text-emerald-200"
+                onClick={() => handleCSVExport(movements, 'movimientos.csv')}
+              >
+                Exportar CSV
+              </button>
+            </div>
+            <div className="mt-4 border border-slate-800 rounded-xl overflow-hidden">
+              <div className="grid grid-cols-[repeat(5,_1fr)] bg-slate-900 text-xs uppercase tracking-wide text-slate-400 px-4 py-3 gap-3">
+                <span>Tipo</span>
+                <span>SKU</span>
+                <span>Lote</span>
+                <span>Cantidad</span>
+                <span>Fecha</span>
+              </div>
+              <div className="divide-y divide-slate-800 bg-slate-900/50">
+                {movements.map((move) => (
+                  <div key={move.id} className="grid grid-cols-[repeat(5,_1fr)] items-center px-4 py-3 text-sm gap-3">
+                    <span className={`font-semibold ${move.type === 'entrada' ? 'text-emerald-300' : move.type === 'salida' ? 'text-rose-300' : 'text-amber-300'}`}>
+                      {move.type}
+                    </span>
+                    <span className="text-slate-200">{move.sku}</span>
+                    <span className="text-slate-200">{move.lot}</span>
+                    <span className="text-slate-200">{move.quantity} uds</span>
+                    <span className="text-slate-200">{move.date}</span>
                   </div>
                 ))}
               </div>
             </div>
+          </div>
 
-            <div className="bg-gradient-to-br from-emerald-500/20 via-emerald-500/10 to-cyan-500/10 border border-emerald-500/30 rounded-2xl p-6 shadow-lg shadow-emerald-900/40">
-              <h2 className="text-xl font-semibold text-white">Siguientes pasos</h2>
-              <ul className="mt-4 space-y-3 text-sm text-slate-100">
-                <li className="flex items-start gap-3">
-                  <span className="mt-1 h-2 w-2 rounded-full bg-emerald-400" />
-                  Automatiza conciliaciones con tu banco principal.
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="mt-1 h-2 w-2 rounded-full bg-emerald-400" />
-                  Define alertas cuando el gasto supere 85% del presupuesto.
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="mt-1 h-2 w-2 rounded-full bg-emerald-400" />
-                  Cierra el mes con un informe PDF para tus socios.
-                </li>
-              </ul>
-              <button className="mt-5 w-full py-3 rounded-xl bg-white text-slate-900 font-semibold hover:bg-slate-100 transition">
-                Ver plan de acción
-              </button>
+          <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 shadow-lg shadow-slate-950/40 flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-white">Ventas y gastos</h2>
+              <button className="text-sm text-emerald-300 hover:text-emerald-200">Conciliar</button>
+            </div>
+            <form className="space-y-3" onSubmit={(e) => e.preventDefault()}>
+              <input className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" placeholder="Concepto" />
+              <div className="grid grid-cols-2 gap-3">
+                <select className="rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm">
+                  <option>Venta</option>
+                  <option>Gasto</option>
+                </select>
+                <input type="number" className="rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" placeholder="Monto" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <input type="number" className="rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" placeholder="Envío" />
+                <input type="number" className="rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" placeholder="Comisión" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <input type="number" className="rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" placeholder="Impuestos" />
+                <input type="number" className="rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" placeholder="Diezmo" />
+              </div>
+              <div className="flex justify-end">
+                <button className="px-4 py-2 rounded-xl bg-white text-slate-900 font-semibold hover:bg-slate-100 transition">Registrar</button>
+              </div>
+            </form>
+            <div className="border border-slate-800 rounded-xl overflow-hidden">
+              <div className="grid grid-cols-[repeat(5,_1fr)] bg-slate-900 text-xs uppercase tracking-wide text-slate-400 px-4 py-3 gap-3">
+                <span>Fecha</span>
+                <span>Concepto</span>
+                <span>Tipo</span>
+                <span>Monto</span>
+                <span>Impuestos</span>
+              </div>
+              <div className="divide-y divide-slate-800 bg-slate-900/50">
+                {finances.map((item) => (
+                  <div key={item.id} className="grid grid-cols-[repeat(5,_1fr)] items-center px-4 py-3 text-sm gap-3">
+                    <span className="text-slate-300">{item.date}</span>
+                    <span className="text-white font-medium">{item.concept}</span>
+                    <span className={`font-semibold ${item.type === 'venta' ? 'text-emerald-300' : 'text-rose-300'}`}>{item.type}</span>
+                    <span className={`${item.type === 'venta' ? 'text-emerald-300' : 'text-rose-300'} font-semibold`}>
+                      {item.type === 'venta' ? '+ ' : '- '}
+                      {formatCurrency(Math.abs(item.amount))}
+                    </span>
+                    <span className="text-slate-200">{formatCurrency(item.tax)}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>
