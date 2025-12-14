@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 
-const initialProducts = [
+const products = [
   {
     id: 1,
     model: 'Tenis Running AirFlex',
@@ -10,6 +10,7 @@ const initialProducts = [
     salePrice: 92,
     location: 'Almacén A1',
     stock: 18,
+    barcode: '7501234567890',
     receivedAt: '2024-09-02',
     eta: '2024-09-08',
   },
@@ -22,6 +23,7 @@ const initialProducts = [
     salePrice: 65,
     location: 'Almacén B3',
     stock: 34,
+    barcode: '7504567891234',
     receivedAt: '2024-08-28',
     eta: '2024-09-05',
   },
@@ -34,12 +36,13 @@ const initialProducts = [
     salePrice: 39,
     location: 'Tienda piso 1',
     stock: 22,
+    barcode: '7507891234567',
     receivedAt: '2024-09-04',
     eta: '2024-09-10',
   },
 ];
 
-const initialMovements = [
+const movements = [
   {
     id: 1,
     type: 'entrada',
@@ -69,7 +72,7 @@ const initialMovements = [
   },
 ];
 
-const initialFinances = [
+const finances = [
   { id: 1, date: '2024-09-02', concept: 'Venta online', type: 'venta', amount: 1450, shipping: 120, commission: 58, tax: 232 },
   { id: 2, date: '2024-09-02', concept: 'Pago envío paquetería', type: 'gasto', amount: -120, shipping: 120, commission: 0, tax: 0 },
   { id: 3, date: '2024-09-03', concept: 'Venta POS', type: 'venta', amount: 980, shipping: 0, commission: 35, tax: 157 },
@@ -77,7 +80,7 @@ const initialFinances = [
   { id: 5, date: '2024-09-04', concept: 'Diezmo', type: 'gasto', amount: -150, shipping: 0, commission: 0, tax: 0 },
 ];
 
-const initialCashBalance = 18750;
+const cashBalance = 18750;
 
 const formatCurrency = (value) =>
   value.toLocaleString('es-MX', {
@@ -112,40 +115,7 @@ function DataRow({ cells }) {
 }
 
 function App() {
-  const [products, setProducts] = useState(initialProducts);
-  const [movements, setMovements] = useState(initialMovements);
-  const [finances, setFinances] = useState(initialFinances);
-  const [cashBalance, setCashBalance] = useState(initialCashBalance);
-
-  const [productForm, setProductForm] = useState({
-    model: '',
-    sku: '',
-    lot: '',
-    cost: '',
-    salePrice: '',
-    location: '',
-    receivedAt: '',
-    eta: '',
-    stock: '',
-  });
-
-  const [movementForm, setMovementForm] = useState({
-    type: 'entrada',
-    sku: '',
-    lot: '',
-    quantity: '',
-    reason: '',
-  });
-
-  const [financeForm, setFinanceForm] = useState({
-    concept: '',
-    type: 'venta',
-    amount: '',
-    shipping: '',
-    commission: '',
-    tax: '',
-    tithe: '',
-  });
+  const [barcode, setBarcode] = useState('');
 
   const totals = useMemo(() => {
     const inventoryValue = products.reduce((sum, item) => sum + item.stock * item.cost, 0);
@@ -155,7 +125,7 @@ function App() {
     const netCash = totalSales - totalExpenses;
 
     return { inventoryValue, potentialRevenue, totalSales, totalExpenses, netCash };
-  }, [finances, products]);
+  }, []);
 
   const handleCSVExport = (rows, filename) => {
     if (!rows?.length) return;
@@ -182,90 +152,6 @@ function App() {
     URL.revokeObjectURL(url);
   };
 
-  const handleProductSubmit = (event) => {
-    event.preventDefault();
-
-    const newProduct = {
-      ...productForm,
-      id: crypto.randomUUID(),
-      cost: Number(productForm.cost || 0),
-      salePrice: Number(productForm.salePrice || 0),
-      stock: Number(productForm.stock || 0),
-    };
-
-    setProducts((prev) => [newProduct, ...prev]);
-    setProductForm({
-      model: '',
-      sku: '',
-      lot: '',
-      cost: '',
-      salePrice: '',
-      location: '',
-      receivedAt: '',
-      eta: '',
-      stock: '',
-    });
-  };
-
-  const handleMovementSubmit = (event) => {
-    event.preventDefault();
-
-    if (!movementForm.sku || !movementForm.quantity) return;
-
-    const quantity = Number(movementForm.quantity);
-    const movementType = movementForm.type.toLowerCase();
-    const signedQty = movementType === 'salida' ? -Math.abs(quantity) : movementType === 'entrada' ? Math.abs(quantity) : quantity;
-
-    setProducts((prev) =>
-      prev.map((product) =>
-        product.sku === movementForm.sku
-          ? { ...product, stock: Math.max(0, product.stock + signedQty) }
-          : product
-      )
-    );
-
-    const newMovement = {
-      id: crypto.randomUUID(),
-      ...movementForm,
-      quantity: signedQty,
-      date: new Date().toISOString().slice(0, 10),
-    };
-
-    setMovements((prev) => [newMovement, ...prev]);
-    setMovementForm({ type: 'entrada', sku: '', lot: '', quantity: '', reason: '' });
-  };
-
-  const handleFinanceSubmit = (event) => {
-    event.preventDefault();
-    if (!financeForm.concept || !financeForm.amount) return;
-
-    const amount = Number(financeForm.amount);
-    const shipping = Number(financeForm.shipping || 0);
-    const commission = Number(financeForm.commission || 0);
-    const tax = Number(financeForm.tax || 0);
-    const tithe = Number(financeForm.tithe || 0);
-
-    const isSale = financeForm.type === 'venta';
-    const signedAmount = isSale ? Math.abs(amount) : -Math.abs(amount);
-
-    const newFinance = {
-      id: crypto.randomUUID(),
-      concept: financeForm.concept,
-      type: financeForm.type,
-      date: new Date().toISOString().slice(0, 10),
-      amount: signedAmount,
-      shipping,
-      commission,
-      tax,
-      tithe,
-    };
-
-    setFinances((prev) => [newFinance, ...prev]);
-    setCashBalance((prev) => prev + signedAmount - shipping - commission - tax - tithe);
-
-    setFinanceForm({ concept: '', type: 'venta', amount: '', shipping: '', commission: '', tax: '', tithe: '' });
-  };
-
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <header className="bg-gradient-to-r from-emerald-500/20 via-cyan-500/10 to-blue-500/10 border-b border-slate-900">
@@ -279,12 +165,12 @@ function App() {
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <a className="px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-semibold shadow-lg shadow-emerald-500/30 hover:scale-[1.01] transition" href="#registrar-producto">
+            <button className="px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-semibold shadow-lg shadow-emerald-500/30 hover:scale-[1.01] transition">
               Agregar producto
-            </a>
-            <a className="px-4 py-2 rounded-xl bg-slate-900/80 border border-slate-800 hover:bg-slate-800 font-semibold text-slate-100" href="#movimientos">
+            </button>
+            <button className="px-4 py-2 rounded-xl bg-slate-900/80 border border-slate-800 hover:bg-slate-800 font-semibold text-slate-100">
               Registrar movimiento
-            </a>
+            </button>
             <button
               className="px-4 py-2 rounded-xl bg-slate-900/80 border border-slate-800 hover:bg-slate-800 font-semibold text-slate-100"
               onClick={() => handleCSVExport(products, 'inventario.csv')}
@@ -324,7 +210,7 @@ function App() {
         </section>
 
         <section className="grid gap-6 lg:grid-cols-3">
-          <div id="registrar-producto" className="lg:col-span-2 bg-slate-900/70 border border-slate-800 rounded-2xl p-6 shadow-lg shadow-slate-950/40">
+          <div className="lg:col-span-2 bg-slate-900/70 border border-slate-800 rounded-2xl p-6 shadow-lg shadow-slate-950/40">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-semibold text-white">Registrar producto</h2>
@@ -332,92 +218,49 @@ function App() {
               </div>
               <span className="px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 text-xs font-semibold">Nuevo</span>
             </div>
-            <form className="mt-6 grid gap-4 md:grid-cols-2" onSubmit={handleProductSubmit}>
+            <form className="mt-6 grid gap-4 md:grid-cols-2" onSubmit={(e) => e.preventDefault()}>
               <div className="space-y-2">
                 <label className="text-sm text-slate-300">Modelo / descripción</label>
-                <input
-                  className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
-                  placeholder="Ej. Tenis AirFlex"
-                  required
-                  value={productForm.model}
-                  onChange={(e) => setProductForm((prev) => ({ ...prev, model: e.target.value }))}
-                />
+                <input className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" placeholder="Ej. Tenis AirFlex" required />
               </div>
               <div className="space-y-2">
                 <label className="text-sm text-slate-300">SKU</label>
-                <input
-                  className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
-                  placeholder="RUN-001"
-                  required
-                  value={productForm.sku}
-                  onChange={(e) => setProductForm((prev) => ({ ...prev, sku: e.target.value }))}
-                />
+                <input className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" placeholder="RUN-001" required />
               </div>
               <div className="space-y-2">
                 <label className="text-sm text-slate-300">Lote</label>
-                <input
-                  className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
-                  placeholder="L2409"
-                  value={productForm.lot}
-                  onChange={(e) => setProductForm((prev) => ({ ...prev, lot: e.target.value }))}
-                />
+                <input className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" placeholder="L2409" />
               </div>
               <div className="space-y-2">
                 <label className="text-sm text-slate-300">Costo unitario</label>
-                <input
-                  type="number"
-                  className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
-                  placeholder="50"
-                  value={productForm.cost}
-                  onChange={(e) => setProductForm((prev) => ({ ...prev, cost: e.target.value }))}
-                />
+                <input type="number" className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" placeholder="50" />
               </div>
               <div className="space-y-2">
                 <label className="text-sm text-slate-300">Precio de venta</label>
-                <input
-                  type="number"
-                  className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
-                  placeholder="80"
-                  value={productForm.salePrice}
-                  onChange={(e) => setProductForm((prev) => ({ ...prev, salePrice: e.target.value }))}
-                />
+                <input type="number" className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" placeholder="80" />
               </div>
               <div className="space-y-2">
                 <label className="text-sm text-slate-300">Ubicación</label>
-                <input
-                  className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
-                  placeholder="Almacén A1"
-                  value={productForm.location}
-                  onChange={(e) => setProductForm((prev) => ({ ...prev, location: e.target.value }))}
-                />
+                <input className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" placeholder="Almacén A1" />
               </div>
               <div className="space-y-2">
                 <label className="text-sm text-slate-300">Fecha de ingreso</label>
-                <input
-                  type="date"
-                  className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
-                  value={productForm.receivedAt}
-                  onChange={(e) => setProductForm((prev) => ({ ...prev, receivedAt: e.target.value }))}
-                />
+                <input type="date" className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" />
               </div>
               <div className="space-y-2">
                 <label className="text-sm text-slate-300">Fecha esperada de entrega</label>
+                <input type="date" className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm text-slate-300">Código de barras</label>
                 <input
-                  type="date"
                   className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
-                  value={productForm.eta}
-                  onChange={(e) => setProductForm((prev) => ({ ...prev, eta: e.target.value }))}
+                  placeholder="Escanea o escribe"
                 />
               </div>
               <div className="space-y-2">
                 <label className="text-sm text-slate-300">Stock inicial</label>
-                <input
-                  type="number"
-                  className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
-                  placeholder="10"
-                  value={productForm.stock}
-                  onChange={(e) => setProductForm((prev) => ({ ...prev, stock: e.target.value }))}
-                />
+                <input type="number" className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" placeholder="10" />
               </div>
               <div className="md:col-span-2 flex justify-end">
                 <button className="px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-semibold shadow-lg shadow-emerald-500/30 hover:scale-[1.01] transition">
@@ -425,6 +268,36 @@ function App() {
                 </button>
               </div>
             </form>
+          </div>
+
+          <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 shadow-lg shadow-slate-950/40">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-white">Escaneo rápido</h2>
+              <button className="text-sm text-emerald-300 hover:text-emerald-200">Usar lector</button>
+            </div>
+            <p className="text-sm text-slate-400 mt-1">Busca por código de barras para sumar o restar stock.</p>
+            <div className="mt-4 space-y-3">
+              <input
+                value={barcode}
+                onChange={(e) => setBarcode(e.target.value)}
+                className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
+                placeholder="Escanea o escribe el código"
+              />
+              <button className="w-full py-2 rounded-xl bg-slate-800 text-white font-semibold hover:bg-slate-700 transition">Agregar rápido</button>
+              <div className="p-4 rounded-xl border border-slate-800 bg-slate-900/60 space-y-2 text-sm">
+                <div className="flex items-center justify-between text-slate-400">
+                  <span>Coincidencias</span>
+                  <span className="text-xs px-2 py-1 bg-slate-800 rounded-full">{barcode ? '1' : '0'}</span>
+                </div>
+                {barcode ? (
+                  <div className="text-slate-200">
+                    {products[0].model} — {products[0].sku}
+                  </div>
+                ) : (
+                  <div className="text-slate-500">Escanea un código para mostrar resultados.</div>
+                )}
+              </div>
+            </div>
           </div>
         </section>
 
@@ -470,52 +343,25 @@ function App() {
           </div>
 
           <div className="space-y-6">
-            <div id="movimientos" className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 shadow-lg shadow-slate-950/40">
+            <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 shadow-lg shadow-slate-950/40">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold text-white">Movimiento de inventario</h2>
                 <button className="text-sm text-emerald-300 hover:text-emerald-200">Plantilla</button>
               </div>
-              <form className="mt-4 space-y-3" onSubmit={handleMovementSubmit}>
+              <form className="mt-4 space-y-3" onSubmit={(e) => e.preventDefault()}>
                 <div className="grid grid-cols-2 gap-3">
-                  <select
-                    className="rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
-                    value={movementForm.type}
-                    onChange={(e) => setMovementForm((prev) => ({ ...prev, type: e.target.value }))}
-                  >
-                    <option value="entrada">Entrada</option>
-                    <option value="salida">Salida</option>
-                    <option value="ajuste">Ajuste</option>
+                  <select className="rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm">
+                    <option>Entrada</option>
+                    <option>Salida</option>
+                    <option>Ajuste</option>
                   </select>
-                  <input
-                    className="rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
-                    placeholder="SKU"
-                    required
-                    value={movementForm.sku}
-                    onChange={(e) => setMovementForm((prev) => ({ ...prev, sku: e.target.value }))}
-                  />
+                  <input className="rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" placeholder="SKU o código" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <input
-                    type="number"
-                    className="rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
-                    placeholder="Cantidad"
-                    required
-                    value={movementForm.quantity}
-                    onChange={(e) => setMovementForm((prev) => ({ ...prev, quantity: e.target.value }))}
-                  />
-                  <input
-                    className="rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
-                    placeholder="Lote"
-                    value={movementForm.lot}
-                    onChange={(e) => setMovementForm((prev) => ({ ...prev, lot: e.target.value }))}
-                  />
+                  <input type="number" className="rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" placeholder="Cantidad" />
+                  <input className="rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" placeholder="Lote" />
                 </div>
-                <input
-                  className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
-                  placeholder="Motivo (compra, venta, ajuste)"
-                  value={movementForm.reason}
-                  onChange={(e) => setMovementForm((prev) => ({ ...prev, reason: e.target.value }))}
-                />
+                <input className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" placeholder="Motivo (compra, venta, ajuste)" />
                 <div className="flex justify-end">
                   <button className="px-4 py-2 rounded-xl bg-white text-slate-900 font-semibold hover:bg-slate-100 transition">Guardar movimiento</button>
                 </div>
@@ -588,63 +434,22 @@ function App() {
               <h2 className="text-xl font-semibold text-white">Ventas y gastos</h2>
               <button className="text-sm text-emerald-300 hover:text-emerald-200">Conciliar</button>
             </div>
-            <form className="space-y-3" onSubmit={handleFinanceSubmit}>
-              <input
-                className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
-                placeholder="Concepto"
-                required
-                value={financeForm.concept}
-                onChange={(e) => setFinanceForm((prev) => ({ ...prev, concept: e.target.value }))}
-              />
+            <form className="space-y-3" onSubmit={(e) => e.preventDefault()}>
+              <input className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" placeholder="Concepto" />
               <div className="grid grid-cols-2 gap-3">
-                <select
-                  className="rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
-                  value={financeForm.type}
-                  onChange={(e) => setFinanceForm((prev) => ({ ...prev, type: e.target.value }))}
-                >
-                  <option value="venta">Venta</option>
-                  <option value="gasto">Gasto</option>
+                <select className="rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm">
+                  <option>Venta</option>
+                  <option>Gasto</option>
                 </select>
-                <input
-                  type="number"
-                  className="rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
-                  placeholder="Monto"
-                  required
-                  value={financeForm.amount}
-                  onChange={(e) => setFinanceForm((prev) => ({ ...prev, amount: e.target.value }))}
-                />
+                <input type="number" className="rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" placeholder="Monto" />
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <input
-                  type="number"
-                  className="rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
-                  placeholder="Envío"
-                  value={financeForm.shipping}
-                  onChange={(e) => setFinanceForm((prev) => ({ ...prev, shipping: e.target.value }))}
-                />
-                <input
-                  type="number"
-                  className="rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
-                  placeholder="Comisión"
-                  value={financeForm.commission}
-                  onChange={(e) => setFinanceForm((prev) => ({ ...prev, commission: e.target.value }))}
-                />
+                <input type="number" className="rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" placeholder="Envío" />
+                <input type="number" className="rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" placeholder="Comisión" />
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <input
-                  type="number"
-                  className="rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
-                  placeholder="Impuestos"
-                  value={financeForm.tax}
-                  onChange={(e) => setFinanceForm((prev) => ({ ...prev, tax: e.target.value }))}
-                />
-                <input
-                  type="number"
-                  className="rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
-                  placeholder="Diezmo"
-                  value={financeForm.tithe}
-                  onChange={(e) => setFinanceForm((prev) => ({ ...prev, tithe: e.target.value }))}
-                />
+                <input type="number" className="rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" placeholder="Impuestos" />
+                <input type="number" className="rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" placeholder="Diezmo" />
               </div>
               <div className="flex justify-end">
                 <button className="px-4 py-2 rounded-xl bg-white text-slate-900 font-semibold hover:bg-slate-100 transition">Registrar</button>
